@@ -1,0 +1,31 @@
+{
+  "name": "nexus-opencode",
+  "version": "0.1.0",
+  "description": "A ready-to-run autonomous programming team profile for OpenCode.",
+  "author": "Luis Salas <lhozdroid@gmail.com>",
+  "license": "MIT",
+  "keywords": ["opencode", "agents", "developer-tools", "ai"],
+  "type": "module",
+  "bin": {
+    "nexus": "bin/nexus"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "tests",
+    ".opencode",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "Makefile",
+    "README.md",
+    "manifest.json",
+    "skills-lock.json"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js .opencode/plugins/nexus-ack/index.test.js .opencode/plugins/nexus-available-agents/index.test.js .opencode/plugins/nexus-subagents/index.test.js"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "nexus-title",
+  "type": "module",
+  "exports": {
+    "./tui": "./index.js"
+  }
+}

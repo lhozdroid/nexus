@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+
+import { existsSync } from "node:fs"
+import { access, readFile } from "node:fs/promises"
+import { spawn } from "node:child_process"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+import { copyProfile, validateProfile } from "../lib/installer.js"
+
+const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const PROFILE_ROOT = path.join(PACKAGE_ROOT, ".opencode")
+const VERSION = "0.1.0"
+
+function help() {
+  process.stdout.write(`Nexus OpenCode distribution ${VERSION}
+
+Usage:
+  nexus init [project] [--force]  Install the Nexus profile into a project
+  nexus run [opencode args]       Start OpenCode with autonomous permissions
+  nexus doctor [project]          Validate the installed profile and OpenCode
+  nexus version                  Print the Nexus version
+  nexus help                     Show this help
+
+The autonomous profile intentionally allows unrestricted tool execution.
+Use it only where the project owner accepts that trust model.
+`)
+}
+
+function parseInitArgs(args) {
+  const force = args.includes("--force")
+  const target = args.find((arg) => arg !== "--force") || process.cwd()
+  return { force, target: path.resolve(target) }
+}
+
+async function init(args) {
+  const { force, target } = parseInitArgs(args)
+  const destination = path.join(target, ".opencode")
+  await copyProfile(PROFILE_ROOT, destination, { force })
+  process.stdout.write(`Installed Nexus into ${destination}\n`)
+}
+
+function runOpenCode(args) {
+  const child = spawn("opencode", ["--auto", ...args], {
+    env: {
+      ...process.env,
+      OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS: process.env.OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS || "true",
+    },
+    stdio: "inherit",
+  })
+  child.on("error", (error) => {
+    process.stderr.write(`Unable to start opencode: ${error.message}\n`)
+    process.exitCode = 1
+  })
+  child.on("exit", (code, signal) => {
+    process.exitCode = signal ? 1 : code ?? 1
+  })
+}
+
+async function readVersion(file) {
+  try {
+    return JSON.parse(await readFile(file, "utf8"))
+  } catch {
+    return undefined
+  }
+}
+
+async function doctor(args) {
+  const target = path.resolve(args[0] || process.cwd())
+  const profile = path.join(target, ".opencode")
+  await validateProfile({
+    opencode: path.join(profile, "opencode.json"),
+    tui: path.join(profile, "tui.json"),
+  })
+
+  const manifest = await readVersion(path.join(profile, "nexus.json"))
+  if (!manifest || manifest.name !== "nexus-opencode") throw new Error("Missing or invalid .opencode/nexus.json")
+
+  const opencode = await new Promise((resolve) => {
+    const child = spawn("opencode", ["--version"], { stdio: ["ignore", "pipe", "ignore"] })
+    let output = ""
+    child.stdout.on("data", (chunk) => { output += chunk })
+    child.on("error", () => resolve("unavailable"))
+    child.on("close", (code) => resolve(code === 0 ? output.trim() : "unavailable"))
+  })
+
+  process.stdout.write(`Nexus profile: ${manifest.version}\n`)
+  process.stdout.write(`OpenCode: ${opencode}\n`)
+  process.stdout.write(`Profile path: ${profile}\n`)
+}
+
+async function main(args) {
+  const [command = "help", ...rest] = args
+  if (command === "help" || command === "--help" || command === "-h") return help()
+  if (command === "version" || command === "--version" || command === "-v") return process.stdout.write(`${VERSION}\n`)
+  if (command === "init") return init(rest)
+  if (command === "run") return runOpenCode(rest)
+  if (command === "doctor") return doctor(rest)
+  throw new Error(`Unknown command: ${command}. Run 'nexus help'.`)
+}
+
+main(process.argv.slice(2)).catch((error) => {
+  process.stderr.write(`nexus: ${error.message}\n`)
+  process.exitCode = 1
+})

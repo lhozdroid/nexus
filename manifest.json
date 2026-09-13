@@ -1,0 +1,8 @@
+{
+  "name": "nexus-opencode",
+  "version": "0.1.0",
+  "profileVersion": 1,
+  "minimumOpenCode": "1.18.30",
+  "runtime": "bun",
+  "remoteAgentSourceRef": "d58d24d59214039e590d90409e46ab758d6f579a"
+}

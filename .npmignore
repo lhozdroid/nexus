@@ -1,0 +1,6 @@
+.git
+.github
+.opencode/node_modules
+.opencode/.nexus-*.json
+node_modules
+npm-debug.log*
